@@ -1,0 +1,73 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluent-bit
+  namespace: logging
+  labels:
+    k8s-app: fluent-bit
+spec:
+  selector:
+    matchLabels:
+      k8s-app: fluent-bit
+  template:
+    metadata:
+      labels:
+        k8s-app: fluent-bit
+    spec:
+      containers:
+      - name: fluent-bit
+        image: fluent/fluent-bit:latest
+        resources:
+          limits:
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+        # mount node logs
+        - name: node-logs
+          mountPath: /var/log
+        # mount fluentbit config  
+        - name: fluent-bit-config
+          mountPath: /fluent-bit/etc/
+      terminationGracePeriodSeconds: 10
+      volumes:
+      # this is where the node logs are present
+      - name: node-logs
+        # host path needed as logs are to be read from the node
+        hostPath:
+          path: /var/log
+      # load fluentbit config file
+      - name: fluent-bit-config
+        configMap:
+          name: fluent-bit-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-config
+  namespace: logging
+  labels:
+    k8s-app: fluent-bit
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush         1
+        Log_Level     debug
+        #Log_Level     info
+        Daemon        off
+
+    [INPUT]
+        Name              tail
+        Tag               kube.*
+        Path              /var/log/containers/*.log
+        DB                /var/log/flb_kube.db
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+        Refresh_Interval  10
+
+    [OUTPUT]
+        Name  stdout
+        Match *
+---

@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app-deployment
+  namespace: demo-app
+  labels:
+    app: demo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+    spec:
+      containers:
+      - name: demo-app
+        image: hello:latest
+        # always pull local image, do not look up in any remote image repo for this example
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
